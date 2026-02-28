@@ -1,0 +1,50 @@
+defaults:
+  - _self_
+  - dataset: rlds
+  - env_vars: env_vars
+
+# Model
+vla_path: "openvla/openvla-7b"
+use_l1_regression: true
+use_diffusion: false
+num_diffusion_steps_train: 50
+use_film: false
+num_images_in_input: 1
+use_proprio: false
+
+# Training
+batch_size: 8
+learning_rate: 5e-4
+lr_warmup_steps: 0
+num_steps_before_decay: 100000
+grad_accumulation_steps: 1
+max_steps: 200000
+image_aug: true
+save_freq: 10000
+save_latest_checkpoint_only: false
+resume: false
+resume_step: null
+use_val_set: false
+val_freq: 10000
+val_time_limit: 180
+diffusion_sample_freq: 50
+
+# LoRA
+use_lora: true
+lora_rank: 32
+lora_dropout: 0.0
+merge_lora_during_training: true
+
+# Logging
+run_root_dir: "./runs"
+wandb_entity: "your-wandb-entity"
+wandb_project: "your-wandb-project"
+wandb_log_freq: 10
+run_id_note: null
+run_id_override: null
+
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

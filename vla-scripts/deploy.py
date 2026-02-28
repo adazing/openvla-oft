@@ -36,7 +36,8 @@ from experiments.robot.openvla_utils import (
 from experiments.robot.robot_utils import (
     get_image_resize_size,
 )
-from prismatic.vla.constants import ACTION_DIM, ACTION_TOKEN_BEGIN_IDX, IGNORE_INDEX, NUM_ACTIONS_CHUNK, PROPRIO_DIM, STOP_INDEX
+import prismatic.vla.constants as C
+from prismatic.vla.constants import ACTION_TOKEN_BEGIN_IDX, IGNORE_INDEX, STOP_INDEX
 
 
 def get_openvla_prompt(instruction: str, openvla_path: Union[str, Path]) -> str:
@@ -57,7 +58,7 @@ class OpenVLAServer:
         # Load proprio projector
         self.proprio_projector = None
         if cfg.use_proprio:
-            self.proprio_projector = get_proprio_projector(cfg, self.vla.llm_dim, PROPRIO_DIM)
+            self.proprio_projector = get_proprio_projector(cfg, self.vla.llm_dim, C.PROPRIO_DIM)
 
         # Load continuous action head
         self.action_head = None

@@ -27,10 +27,7 @@ from prismatic.extern.hf.processing_prismatic import PrismaticImageProcessor, Pr
 from prismatic.models.action_heads import DiffusionActionHead, L1RegressionActionHead
 from prismatic.models.film_vit_wrapper import FiLMedPrismaticVisionBackbone
 from prismatic.models.projectors import NoisyActionProjector, ProprioProjector
-from prismatic.vla.constants import (
-    ACTION_DIM,
-    ACTION_PROPRIO_NORMALIZATION_TYPE,
-)
+import prismatic.vla.constants as C
 from prismatic.vla.datasets.rlds.utils.data_utils import NormalizationType
 
 # Initialize important constants
@@ -479,10 +476,10 @@ def get_action_head(cfg: Any, llm_dim: int) -> Union[L1RegressionActionHead, Dif
 
     # Initialize appropriate action head based on configuration
     if cfg.use_l1_regression:
-        action_head = L1RegressionActionHead(input_dim=llm_dim, hidden_dim=llm_dim, action_dim=ACTION_DIM)
+        action_head = L1RegressionActionHead(input_dim=llm_dim, hidden_dim=llm_dim, action_dim=C.ACTION_DIM)
     elif cfg.use_diffusion:
         action_head = DiffusionActionHead(
-            input_dim=llm_dim, hidden_dim=llm_dim, action_dim=ACTION_DIM, num_diffusion_steps_train=cfg.num_diffusion_steps_train
+            input_dim=llm_dim, hidden_dim=llm_dim, action_dim=C.ACTION_DIM, num_diffusion_steps_train=cfg.num_diffusion_steps_train
         )
         # Set number of diffusion steps for inference
         action_head.noise_scheduler.set_timesteps(cfg.num_diffusion_steps_inference)
@@ -657,10 +654,10 @@ def normalize_proprio(proprio: np.ndarray, norm_stats: Dict[str, Any]) -> np.nda
     Returns:
         np.ndarray: Normalized proprioception data
     """
-    if ACTION_PROPRIO_NORMALIZATION_TYPE == NormalizationType.BOUNDS:
+    if C.ACTION_PROPRIO_NORMALIZATION_TYPE == NormalizationType.BOUNDS:
         mask = norm_stats.get("mask", np.ones_like(norm_stats["min"], dtype=bool))
         proprio_high, proprio_low = np.array(norm_stats["max"]), np.array(norm_stats["min"])
-    elif ACTION_PROPRIO_NORMALIZATION_TYPE == NormalizationType.BOUNDS_Q99:
+    elif C.ACTION_PROPRIO_NORMALIZATION_TYPE == NormalizationType.BOUNDS_Q99:
         mask = norm_stats.get("mask", np.ones_like(norm_stats["q01"], dtype=bool))
         proprio_high, proprio_low = np.array(norm_stats["q99"]), np.array(norm_stats["q01"])
     else:

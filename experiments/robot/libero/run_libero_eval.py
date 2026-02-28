@@ -47,7 +47,7 @@ from experiments.robot.robot_utils import (
     normalize_gripper_action,
     set_seed_everywhere,
 )
-from prismatic.vla.constants import NUM_ACTIONS_CHUNK
+import prismatic.vla.constants as C
 
 
 # Define task suite constants
@@ -299,9 +299,9 @@ def run_episode(
         obs = env.get_observation()
 
     # Initialize action queue
-    if cfg.num_open_loop_steps != NUM_ACTIONS_CHUNK:
-        print(f"WARNING: cfg.num_open_loop_steps ({cfg.num_open_loop_steps}) does not match the NUM_ACTIONS_CHUNK "
-              f"({NUM_ACTIONS_CHUNK}) constant defined in prismatic.vla.constants! For best performance (in terms of "
+    if cfg.num_open_loop_steps != C.NUM_ACTIONS_CHUNK:
+        print(f"WARNING: cfg.num_open_loop_steps ({cfg.num_open_loop_steps}) does not match the C.NUM_ACTIONS_CHUNK "
+              f"({C.NUM_ACTIONS_CHUNK}) constant defined in prismatic.vla.constants! For best performance (in terms of "
                "both speed and success rate), we recommend executing the full action chunk.")
     action_queue = deque(maxlen=cfg.num_open_loop_steps)
 

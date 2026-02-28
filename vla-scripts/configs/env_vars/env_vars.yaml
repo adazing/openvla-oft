@@ -1,0 +1,7 @@
+dataset_root: /path/to/datasets
+
+datasets:
+  block_push: ${env_vars.dataset_root}/block_push_dataset
+  cube: ${env_vars.dataset_root}/cube_dataset_v2
+  libero: ${env_vars.dataset_root}/libero_dataset
+  pusht: ${env_vars.dataset_root}/pusht_dataset

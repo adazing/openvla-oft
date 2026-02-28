@@ -34,7 +34,8 @@ from prismatic.util.data_utils import PaddedCollatorForActionPrediction, PaddedC
 from prismatic.vla.action_tokenizer import ActionTokenizer
 
 # HuggingFace Default / LLaMa-2 IGNORE_INDEX (for labels)
-from prismatic.vla.constants import ACTION_DIM, ACTION_TOKEN_BEGIN_IDX, NUM_ACTIONS_CHUNK, IGNORE_INDEX
+import prismatic.vla.constants as C
+from prismatic.vla.constants import ACTION_TOKEN_BEGIN_IDX, IGNORE_INDEX
 NEWLINE_INDEX = 13  # '\n'
 STOP_INDEX = 2  # '</s>'
 
