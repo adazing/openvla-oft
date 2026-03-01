@@ -5,7 +5,7 @@ defaults:
 
 # Model
 model_family: "openvla"
-pretrained_checkpoint: ${env_vars.pretrained_checkpoint}
+pretrained_checkpoint: ""  # Path to fine-tuned checkpoint
 use_l1_regression: true
 use_diffusion: false
 num_diffusion_steps_train: 50

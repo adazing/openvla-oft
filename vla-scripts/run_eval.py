@@ -164,6 +164,8 @@ def setup_logging(cfg: DictConfig):
             entity=cfg.wandb_entity,
             project=cfg.wandb_project,
             name=run_id,
+            settings=wandb.Settings(init_timeout=300),
+            config=OmegaConf.to_container(cfg, resolve=True),
         )
 
     return log_file, local_log_filepath, run_id
@@ -333,6 +335,7 @@ def run_episode(
     done = False
     replay_images = []
     last_info = {}
+    total_reward = 0
 
     # Run episode
     success = False
@@ -344,6 +347,7 @@ def run_episode(
                 if cfg.env_name == "libero_goal":
                     dummy_action[-1] = -1  # gripper open
                 obs, reward, done, info = env.step(dummy_action.tolist())
+                total_reward += reward
                 last_info = info
                 t += 1
                 continue
@@ -376,6 +380,7 @@ def run_episode(
 
             # Execute action in environment
             obs, reward, done, info = env.step(action.tolist())
+            total_reward += reward
             last_info = info
             if done:
                 success = check_success(cfg, done, info, env=env, task_description=task_description)
@@ -389,7 +394,16 @@ def run_episode(
     except Exception as e:
         log_message(f"Episode error: {e}", log_file)
 
-    return success, replay_images
+    # Collect per-episode metrics (matching patch_policy's online_eval.py)
+    episode_metrics = {"reward": total_reward}
+    if cfg.env_name in ("blockpush", "cube"):
+        episode_metrics["moved"] = last_info.get("moved", 0)
+        episode_metrics["entered"] = last_info.get("entered", 0)
+    elif cfg.env_name == "pusht":
+        episode_metrics["max_coverage"] = last_info.get("max_coverage", 0)
+        episode_metrics["final_coverage"] = last_info.get("final_coverage", 0)
+
+    return success, replay_images, episode_metrics
 
 
 def run_task(
@@ -410,12 +424,13 @@ def run_task(
     """Run evaluation for a single task."""
     # Start episodes
     task_episodes, task_successes = 0, 0
+    all_episode_metrics = []
     for episode_idx in tqdm.tqdm(range(cfg.num_trials)):
         log_message(f"\nTask: {task_description}", log_file)
         log_message(f"Starting episode {task_episodes + 1}...", log_file)
 
         # Run episode
-        success, replay_images = run_episode(
+        success, replay_images, episode_metrics = run_episode(
             cfg,
             env,
             task_description,
@@ -432,6 +447,7 @@ def run_task(
         # Update counters
         task_episodes += 1
         total_episodes += 1
+        all_episode_metrics.append(episode_metrics)
         if success:
             task_successes += 1
             total_successes += 1
@@ -448,16 +464,44 @@ def run_task(
     log_message(f"Current task success rate: {task_success_rate}", log_file)
     log_message(f"Current total success rate: {total_success_rate}", log_file)
 
-    # Log to wandb if enabled
-    if cfg.use_wandb:
-        wandb.log(
-            {
-                f"success_rate/{task_description}": task_success_rate,
-                f"num_episodes/{task_description}": task_episodes,
-            }
-        )
+    # Log to wandb if enabled (matching patch_policy's online_eval.py metric format)
+    if cfg.use_wandb and all_episode_metrics:
+        # Average reward (matches patch_policy's "eval_on_env")
+        rewards = [m["reward"] for m in all_episode_metrics]
+        avg_reward = sum(rewards) / len(rewards)
+        wandb_metrics = {
+            f"eval_on_env/{task_description}": avg_reward,
+            f"success_rate/{task_description}": task_success_rate,
+            f"num_episodes/{task_description}": task_episodes,
+        }
 
-    return total_episodes, total_successes
+        # Env-specific metrics (matches patch_policy lines 345-359)
+        if cfg.env_name in ("blockpush", "cube"):
+            metric_final = "entered"
+            metric_max = "moved"
+        elif cfg.env_name == "pusht":
+            metric_final = "final coverage"
+            metric_max = "max coverage"
+        else:
+            metric_final = None
+
+        if metric_final is not None:
+            final_values = [m.get("entered" if metric_final == "entered" else "final_coverage", 0)
+                            for m in all_episode_metrics]
+            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0)
+                          for m in all_episode_metrics]
+            wandb_metrics.update({
+                f"{metric_final} mean/{task_description}": sum(final_values) / len(final_values),
+                f"{metric_final} max/{task_description}": max(final_values),
+                f"{metric_final} min/{task_description}": min(final_values),
+                f"{metric_max} mean/{task_description}": sum(max_values) / len(max_values),
+                f"{metric_max} max/{task_description}": max(max_values),
+                f"{metric_max} min/{task_description}": min(max_values),
+            })
+
+        wandb.log(wandb_metrics)
+
+    return total_episodes, total_successes, all_episode_metrics
 
 
 @hydra.main(version_base="1.2", config_path="configs", config_name="eval")
@@ -497,8 +541,9 @@ def run_eval(cfg: DictConfig) -> float:
 
     # Start evaluation
     total_episodes, total_successes = 0, 0
+    all_metrics = []
     for task_idx, task_description in tqdm.tqdm(tasks):
-        total_episodes, total_successes = run_task(
+        total_episodes, total_successes, task_metrics = run_task(
             cfg,
             env,
             task_idx,
@@ -513,6 +558,7 @@ def run_eval(cfg: DictConfig) -> float:
             total_successes,
             log_file,
         )
+        all_metrics.extend(task_metrics)
 
     # Calculate final success rate
     final_success_rate = float(total_successes) / float(total_episodes) if total_episodes > 0 else 0
@@ -523,14 +569,38 @@ def run_eval(cfg: DictConfig) -> float:
     log_message(f"Total successes: {total_successes}", log_file)
     log_message(f"Overall success rate: {final_success_rate:.4f} ({final_success_rate * 100:.1f}%)", log_file)
 
-    # Log to wandb if enabled
-    if cfg.use_wandb:
-        wandb.log(
-            {
-                "success_rate/total": final_success_rate,
-                "num_episodes/total": total_episodes,
-            }
-        )
+    # Log to wandb if enabled (matching patch_policy's online_eval.py metric format)
+    if cfg.use_wandb and all_metrics:
+        rewards = [m["reward"] for m in all_metrics]
+        avg_reward = sum(rewards) / len(rewards)
+        final_wandb = {
+            "eval_on_env/total": avg_reward,
+            "success_rate/total": final_success_rate,
+            "num_episodes/total": total_episodes,
+        }
+
+        if cfg.env_name in ("blockpush", "cube"):
+            metric_final, metric_max = "entered", "moved"
+        elif cfg.env_name == "pusht":
+            metric_final, metric_max = "final coverage", "max coverage"
+        else:
+            metric_final = None
+
+        if metric_final is not None:
+            final_values = [m.get("entered" if metric_final == "entered" else "final_coverage", 0)
+                            for m in all_metrics]
+            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0)
+                          for m in all_metrics]
+            final_wandb.update({
+                f"{metric_final} mean/total": sum(final_values) / len(final_values),
+                f"{metric_final} max/total": max(final_values),
+                f"{metric_final} min/total": min(final_values),
+                f"{metric_max} mean/total": sum(max_values) / len(max_values),
+                f"{metric_max} max/total": max(max_values),
+                f"{metric_max} min/total": min(max_values),
+            })
+
+        wandb.log(final_wandb)
         wandb.save(local_log_filepath)
 
     # Close log file

@@ -744,9 +744,18 @@ def finetune(cfg: DictConfig) -> None:
     torch.cuda.set_device(device_id)
     torch.cuda.empty_cache()
 
+    # Store checkpoint save path in config so it's visible on wandb
+    cfg.save_path = str(run_dir)
+
     # Initialize wandb logging
     if distributed_state.is_main_process:
-        wandb.init(entity=cfg.wandb_entity, project=cfg.wandb_project, name=f"ft+{run_id}")
+        wandb.init(
+            entity=cfg.wandb_entity,
+            project=cfg.wandb_project,
+            name=f"ft+{run_id}",
+            settings=wandb.Settings(init_timeout=300),
+            config=OmegaConf.to_container(cfg, resolve=True),
+        )
 
     # Print detected constants
     print(

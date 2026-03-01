@@ -8,5 +8,3 @@ datasets:
 
 wandb_entity: "your-wandb-entity"
 wandb_project: "openvla-oft"
-
-pretrained_checkpoint: ""  # Path to fine-tuned checkpoint
