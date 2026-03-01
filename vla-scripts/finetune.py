@@ -795,8 +795,9 @@ def finetune(cfg: DictConfig) -> None:
         trust_remote_code=True,
     ).to(device_id)
 
-    # Set number of images in VLA input
-    vla.vision_backbone.set_num_images_in_input(cfg.num_images_in_input)
+    # Set number of images in VLA input (use dataset num_views if available, else top-level config)
+    num_images_in_input = cfg.dataset.get("num_views", cfg.num_images_in_input)
+    vla.vision_backbone.set_num_images_in_input(num_images_in_input)
 
     # LoRA setup
     if cfg.use_lora:
@@ -904,7 +905,7 @@ def finetune(cfg: DictConfig) -> None:
     action_tokenizer = ActionTokenizer(processor.tokenizer)
 
     # We assume that the model takes as input one third-person camera image and 1 or 2 optional wrist camera image(s)
-    use_wrist_image = cfg.num_images_in_input > 1
+    use_wrist_image = num_images_in_input > 1
 
     # Create collator (shared by all dataset types)
     collator = PaddedCollatorForActionPrediction(

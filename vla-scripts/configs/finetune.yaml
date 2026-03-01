@@ -37,8 +37,8 @@ merge_lora_during_training: true
 
 # Logging
 run_root_dir: "./runs"
-wandb_entity: "your-wandb-entity"
-wandb_project: "your-wandb-project"
+wandb_entity: ${env_vars.wandb_entity}
+wandb_project: ${env_vars.wandb_project}
 wandb_log_freq: 10
 run_id_note: null
 run_id_override: null

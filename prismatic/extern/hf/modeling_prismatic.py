@@ -1075,7 +1075,8 @@ class OpenVLAForActionPrediction(PrismaticForConditionalGeneration):
     def get_action_dim(self, unnorm_key: Optional[str] = None) -> int:
         """Get the dimensionality of the policy's action space."""
         unnorm_key = self._check_unnorm_key(self.norm_stats, unnorm_key)
-        return len(self.norm_stats[unnorm_key]["action"]["min"])
+        action_stats = self.norm_stats[unnorm_key]["action"]
+        return len(action_stats.get("q01", action_stats.get("min")))
 
     def get_action_stats(self, unnorm_key: Optional[str] = None) -> Dict[str, Any]:
         """Get all the logged statistics for the given dataset."""

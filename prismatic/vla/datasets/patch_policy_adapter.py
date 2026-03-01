@@ -87,6 +87,8 @@ class PatchPolicyVLADataset(Dataset):
         self._action_q99 = np.quantile(all_actions, 0.99, axis=0).astype(np.float32)
         self._action_mean = np.mean(all_actions, axis=0).astype(np.float32)
         self._action_std = np.std(all_actions, axis=0).astype(np.float32)
+        self._action_min = np.min(all_actions, axis=0).astype(np.float32)
+        self._action_max = np.max(all_actions, axis=0).astype(np.float32)
         print(f"  action q01: {self._action_q01}")
         print(f"  action q99: {self._action_q99}")
 
@@ -97,6 +99,8 @@ class PatchPolicyVLADataset(Dataset):
                     "q99": self._action_q99,
                     "mean": self._action_mean,
                     "std": self._action_std,
+                    "min": self._action_min,
+                    "max": self._action_max,
                 }
             }
         }

@@ -5,3 +5,8 @@ datasets:
   cube: ${env_vars.dataset_root}/cube_dataset_v2
   libero: ${env_vars.dataset_root}/libero_dataset
   pusht: ${env_vars.dataset_root}/pusht_dataset
+
+wandb_entity: "your-wandb-entity"
+wandb_project: "openvla-oft"
+
+pretrained_checkpoint: ""  # Path to fine-tuned checkpoint

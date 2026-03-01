@@ -1,0 +1,47 @@
+defaults:
+  - _self_
+  - eval_env: blockpush
+  - env_vars: env_vars
+
+# Model
+model_family: "openvla"
+pretrained_checkpoint: ${env_vars.pretrained_checkpoint}
+use_l1_regression: true
+use_diffusion: false
+num_diffusion_steps_train: 50
+num_diffusion_steps_inference: 50
+use_film: false
+use_proprio: false
+center_crop: true
+lora_rank: 32
+load_in_8bit: false
+load_in_4bit: false
+
+# Environment (overridden by eval_env configs)
+env_name: "blockpush"
+num_images_in_input: 2
+num_open_loop_steps: 8
+num_trials: 50
+max_steps: 300
+num_steps_wait: 0
+cube_env_type: "double"  # Only used for cube env: single, double, triple, quadruple
+cube_task_id: 5           # Only used for cube env: task5_stack
+
+# Action (overridden by eval_env configs)
+action_dim: 2
+num_actions_chunk: 5
+proprio_dim: 0
+normalization_type: "bounds_q99"
+unnorm_key: ""
+
+# Logging
+run_id_note: null
+local_log_dir: "./experiments/logs"
+use_wandb: false
+wandb_entity: ${env_vars.wandb_entity}
+wandb_project: ${env_vars.wandb_project}
+seed: 7
+
+hydra:
+  job:
+    chdir: false
