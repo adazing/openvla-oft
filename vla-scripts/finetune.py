@@ -998,6 +998,8 @@ def finetune(cfg: DictConfig) -> None:
             ds_kwargs["onehot_goals"] = cfg.dataset.onehot_goals
         if cfg.dataset.get("relative") is not None:
             ds_kwargs["relative"] = cfg.dataset.relative
+        if cfg.dataset.get("image_topics") is not None:
+            ds_kwargs["image_topics"] = list(cfg.dataset.image_topics)
 
         # Instantiate trajectory dataset
         traj_dataset = DatasetClass(**ds_kwargs)
