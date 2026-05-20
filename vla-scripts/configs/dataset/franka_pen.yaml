@@ -1,14 +1,14 @@
 type: patch_policy
 dataset_class: factr_pickle.FactrPickleDataset
-data_directory: "${env_vars.datasets.franka_insertion}"
-language_instruction: "insert the object into the target"
+data_directory: "${env_vars.datasets.franka_pen}"
+language_instruction: "pick up the pen"
 
 # Robot constants
 action_dim: 7              # eef_delta (6) + binary gripper (1)
 num_actions_chunk: 8
 proprio_dim: 0
 normalization_type: "bounds_q99"
-num_views: 2               # /realsense/side/im + /realsense/wrist/im
+num_views: 2               # /realsense/front/im + /realsense/wrist/im
 
 # Data slicing
 window_size: 8
@@ -17,4 +17,4 @@ subset_fraction: null
 
 # Dataset-specific args
 prefetch: false
-image_topics: ["/realsense/side/im", "/realsense/wrist/im"]  # side = primary, wrist = secondary
+image_topics: ["/realsense/front/im", "/realsense/wrist/im"]  # front = primary, wrist = secondary

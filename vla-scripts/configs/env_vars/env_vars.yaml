@@ -6,6 +6,8 @@ datasets:
   libero: ${env_vars.dataset_root}/libero_dataset
   pusht: ${env_vars.dataset_root}/pusht_dataset
   franka_insertion: /nas/bowen/data/patch_policy/insertion_1
+  franka_spatula: /nas/bowen/data/patch_policy/spatula
+  franka_pen: /nas/bowen/data/patch_policy/pen
 
 wandb_entity: gaoyuezhou
 wandb_project: "openvla-oft"
