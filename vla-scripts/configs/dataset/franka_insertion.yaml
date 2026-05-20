@@ -1,4 +1,5 @@
 type: patch_policy
+dataset_name: franka_insertion
 dataset_class: factr_pickle.FactrPickleDataset
 data_directory: "${env_vars.datasets.franka_insertion}"
 language_instruction: "insert the object into the target"
