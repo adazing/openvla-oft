@@ -1,0 +1,11 @@
+env_name: franka_insertion
+action_dim: 7              # eef_delta (6) + binary gripper (1) — must match dataset/franka_insertion.yaml
+num_actions_chunk: 8
+proprio_dim: 0
+normalization_type: "bounds_q99"
+num_images_in_input: 2     # /realsense/wrist/im + /realsense/side/im
+num_open_loop_steps: 8
+max_steps: 300
+num_steps_wait: 0
+use_proprio: false
+unnorm_key: "factr_pickle"

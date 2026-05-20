@@ -973,6 +973,7 @@ def finetune(cfg: DictConfig) -> None:
         from prismatic.vla.datasets.trajectory import (
             PushMultiviewTrajectoryDataset,
             CubeDataset,
+            FactrPickleDataset,
             LiberoGoalDataset,
             PushTDataset,
         )
@@ -981,6 +982,7 @@ def finetune(cfg: DictConfig) -> None:
         DATASET_CLASS_MAP = {
             "block_pushing.PushMultiviewTrajectoryDataset": PushMultiviewTrajectoryDataset,
             "cube.CubeDataset": CubeDataset,
+            "factr_pickle.FactrPickleDataset": FactrPickleDataset,
             "libero.LiberoGoalDataset": LiberoGoalDataset,
             "pusht.PushTDataset": PushTDataset,
         }
