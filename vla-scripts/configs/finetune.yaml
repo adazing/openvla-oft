@@ -36,7 +36,7 @@ lora_dropout: 0.0
 merge_lora_during_training: true
 
 # Logging
-run_root_dir: "./runs"
+run_root_dir: "/checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs"
 wandb_entity: ${env_vars.wandb_entity}
 wandb_project: ${env_vars.wandb_project}
 wandb_log_freq: 10
@@ -47,4 +47,4 @@ hydra:
   job:
     chdir: false
   run:
-    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

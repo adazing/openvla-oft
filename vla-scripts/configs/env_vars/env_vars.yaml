@@ -1,10 +1,10 @@
-dataset_root: /path/to/datasets
+dataset_root: /checkpoint/jepa_core/gzhou/datasets/dynamo_repro_datasets
 
 datasets:
   block_push: ${env_vars.dataset_root}/block_push_dataset
-  cube: ${env_vars.dataset_root}/cube_dataset_v2
+  cube: ${env_vars.dataset_root}/cube
   libero: ${env_vars.dataset_root}/libero_dataset
   pusht: ${env_vars.dataset_root}/pusht_dataset
 
-wandb_entity: "your-wandb-entity"
+wandb_entity: gaoyuezhou
 wandb_project: "openvla-oft"

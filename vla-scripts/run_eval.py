@@ -12,6 +12,8 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import imageio
+
 import einops
 import hydra
 import numpy as np
@@ -179,6 +181,23 @@ def log_message(message: str, log_file=None):
         log_file.flush()
 
 
+def save_video(frames: List[np.ndarray], video_path: str, fps: int = 10) -> None:
+    """Save a list of frames as a video file.
+
+    Args:
+        frames: List of RGB images as numpy arrays (H, W, C) with uint8 dtype.
+        video_path: Path to save the video file.
+        fps: Frames per second for the video.
+    """
+    if not frames:
+        logger.warning(f"No frames to save for video: {video_path}")
+        return
+
+    os.makedirs(os.path.dirname(video_path), exist_ok=True)
+    imageio.mimwrite(video_path, frames, fps=fps, format="FFMPEG")
+    logger.info(f"Saved video to: {video_path}")
+
+
 def create_env(cfg: DictConfig):
     """Create and return the evaluation environment."""
     if cfg.env_name == "blockpush":
@@ -315,7 +334,10 @@ def run_episode(
     log_file=None,
 ):
     """Run a single episode in the environment."""
+    print(goal_idx)
     # Reset environment (BlockPush doesn't accept goal_idx)
+    # sample random seed
+    env.seed(np.random.randint(0, 10000))
     if cfg.env_name == "blockpush":
         obs = env.reset()
     else:
@@ -339,60 +361,61 @@ def run_episode(
 
     # Run episode
     success = False
-    try:
-        while t < cfg.max_steps + cfg.num_steps_wait:
-            # Do nothing for the first few timesteps to let objects stabilize
-            if t < cfg.num_steps_wait:
-                dummy_action = np.zeros(cfg.action_dim)
-                if cfg.env_name == "libero_goal":
-                    dummy_action[-1] = -1  # gripper open
-                obs, reward, done, info = env.step(dummy_action.tolist())
-                total_reward += reward
-                last_info = info
-                t += 1
-                continue
-
-            # Prepare observation (pass info for proprio extraction if needed)
-            observation, img = prepare_observation(obs, cfg, resize_size, info=last_info)
-            replay_images.append(img)
-
-            # If action queue is empty, requery model
-            if len(action_queue) == 0:
-                # Query model to get action
-                actions = get_action(
-                    cfg,
-                    model,
-                    observation,
-                    task_description,
-                    processor=processor,
-                    action_head=action_head,
-                    proprio_projector=proprio_projector,
-                    noisy_action_projector=noisy_action_projector,
-                    use_film=cfg.use_film,
-                )
-                action_queue.extend(actions)
-
-            # Get action from queue
-            action = action_queue.popleft()
-
-            # Process action
-            action = process_action(action, cfg)
-
-            # Execute action in environment
-            obs, reward, done, info = env.step(action.tolist())
+    # try:
+    while t < cfg.max_steps + cfg.num_steps_wait:
+        # Do nothing for the first few timesteps to let objects stabilize
+        if t < cfg.num_steps_wait:
+            dummy_action = np.zeros(cfg.action_dim)
+            if cfg.env_name == "libero_goal":
+                dummy_action[-1] = -1  # gripper open
+            obs, reward, done, info = env.step(dummy_action.tolist())
             total_reward += reward
             last_info = info
-            if done:
-                success = check_success(cfg, done, info, env=env, task_description=task_description)
-                break
             t += 1
+            continue
 
-        # Final success check for envs that don't set done=True on success
-        if not success:
-            success = check_success(cfg, done, last_info, env=env, task_description=task_description)
+        # Prepare observation (pass info for proprio extraction if needed)
+        observation, img = prepare_observation(obs, cfg, resize_size, info=last_info)
+        replay_images.append(img)
 
-    except Exception as e:
-        log_message(f"Episode error: {e}", log_file)
+        # If action queue is empty, requery model
+        if len(action_queue) == 0:
+            # Query model to get action
+            actions = get_action(
+                cfg,
+                model,
+                observation,
+                task_description,
+                processor=processor,
+                action_head=action_head,
+                proprio_projector=proprio_projector,
+                noisy_action_projector=noisy_action_projector,
+                use_film=cfg.use_film,
+            )
+            action_queue.extend(actions)
+
+        # Get action from queue
+        action = action_queue.popleft()
+
+        # Process action
+        action = process_action(action, cfg)
+
+        # Execute action in environment
+        # obs, reward, done, info = env.step(action.tolist())
+        obs, reward, done, info = env.step(action)
+        total_reward += reward
+        last_info = info
+        if done:
+            success = check_success(cfg, done, info, env=env, task_description=task_description)
+            break
+        t += 1
+
+    # Final success check for envs that don't set done=True on success
+    if not success:
+        success = check_success(cfg, done, last_info, env=env, task_description=task_description)
+
+    # except Exception as e:
+    #     log_message(f"Episode error: {e}", log_file)
 
     # Collect per-episode metrics (matching patch_policy's online_eval.py)
     episode_metrics = {"reward": total_reward}
@@ -420,8 +443,13 @@ def run_task(
     total_episodes: int = 0,
     total_successes: int = 0,
     log_file=None,
+    video_dir: Optional[str] = None,
 ):
-    """Run evaluation for a single task."""
+    """Run evaluation for a single task.
+
+    Args:
+        video_dir: If provided, save episode videos to this directory.
+    """
     # Start episodes
     task_episodes, task_successes = 0, 0
     all_episode_metrics = []
@@ -443,6 +471,18 @@ def run_task(
             goal_idx=task_idx,
             log_file=log_file,
         )
+
+        # Save video with success/failure status in filename
+        if video_dir and replay_images:
+            task_name_clean = task_description.replace(" ", "_").replace("/", "_")
+            status = "success" if success else "failure"
+            video_path = os.path.join(
+                video_dir,
+                f"task{task_idx:02d}_{task_name_clean}",
+                f"episode_{episode_idx:03d}_{status}.mp4",
+            )
+            save_video(replay_images, video_path, fps=cfg.get("video_fps", 10))
+            log_message(f"Video saved: {video_path}", log_file)
 
         # Update counters
         task_episodes += 1
@@ -470,9 +510,9 @@ def run_task(
         rewards = [m["reward"] for m in all_episode_metrics]
         avg_reward = sum(rewards) / len(rewards)
         wandb_metrics = {
-            f"eval_on_env/{task_description}": avg_reward,
-            f"success_rate/{task_description}": task_success_rate,
-            f"num_episodes/{task_description}": task_episodes,
+            f"eval_on_env": avg_reward,
+            f"success_rate": task_success_rate,
+            f"num_episodes": task_episodes,
         }
 
         # Env-specific metrics (matches patch_policy lines 345-359)
@@ -486,20 +526,27 @@ def run_task(
             metric_final = None
 
         if metric_final is not None:
-            final_values = [m.get("entered" if metric_final == "entered" else "final_coverage", 0)
-                            for m in all_episode_metrics]
-            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0)
-                          for m in all_episode_metrics]
-            wandb_metrics.update({
-                f"{metric_final} mean/{task_description}": sum(final_values) / len(final_values),
-                f"{metric_final} max/{task_description}": max(final_values),
-                f"{metric_final} min/{task_description}": min(final_values),
-                f"{metric_max} mean/{task_description}": sum(max_values) / len(max_values),
-                f"{metric_max} max/{task_description}": max(max_values),
-                f"{metric_max} min/{task_description}": min(max_values),
-            })
+            final_values = [
+                m.get("entered" if metric_final == "entered" else "final_coverage", 0) for m in all_episode_metrics
+            ]
+            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0) for m in all_episode_metrics]
+            wandb_metrics.update(
+                {
+                    f"{metric_final} mean": sum(final_values) / len(final_values),
+                    f"{metric_final} max": max(final_values),
+                    f"{metric_final} min": min(final_values),
+                    f"{metric_max} mean": sum(max_values) / len(max_values),
+                    f"{metric_max} max": max(max_values),
+                    f"{metric_max} min": min(max_values),
+                }
+            )
 
         wandb.log(wandb_metrics)
+        print("####### FINAL EVAL")
+        print(wandb_metrics)
+        import pdb
+
+        pdb.set_trace()
 
     return total_episodes, total_successes, all_episode_metrics
 
@@ -539,6 +586,13 @@ def run_eval(cfg: DictConfig) -> float:
     log_message(f"Environment: {cfg.env_name}", log_file)
     log_message(f"Number of tasks: {len(tasks)}", log_file)
 
+    # Prepare video directory if saving videos
+    video_dir = None
+    if cfg.get("save_videos", True):
+        video_dir = os.path.join(cfg.local_log_dir, run_id, "videos")
+        os.makedirs(video_dir, exist_ok=True)
+        log_message(f"Saving evaluation videos to: {video_dir}", log_file)
+
     # Start evaluation
     total_episodes, total_successes = 0, 0
     all_metrics = []
@@ -557,6 +611,7 @@ def run_eval(cfg: DictConfig) -> float:
             total_episodes,
             total_successes,
             log_file,
+            video_dir=video_dir,
         )
         all_metrics.extend(task_metrics)
 
@@ -587,18 +642,18 @@ def run_eval(cfg: DictConfig) -> float:
             metric_final = None
 
         if metric_final is not None:
-            final_values = [m.get("entered" if metric_final == "entered" else "final_coverage", 0)
-                            for m in all_metrics]
-            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0)
-                          for m in all_metrics]
-            final_wandb.update({
-                f"{metric_final} mean/total": sum(final_values) / len(final_values),
-                f"{metric_final} max/total": max(final_values),
-                f"{metric_final} min/total": min(final_values),
-                f"{metric_max} mean/total": sum(max_values) / len(max_values),
-                f"{metric_max} max/total": max(max_values),
-                f"{metric_max} min/total": min(max_values),
-            })
+            final_values = [m.get("entered" if metric_final == "entered" else "final_coverage", 0) for m in all_metrics]
+            max_values = [m.get("moved" if metric_max == "moved" else "max_coverage", 0) for m in all_metrics]
+            final_wandb.update(
+                {
+                    f"{metric_final} mean/total": sum(final_values) / len(final_values),
+                    f"{metric_final} max/total": max(final_values),
+                    f"{metric_final} min/total": min(final_values),
+                    f"{metric_max} mean/total": sum(max_values) / len(max_values),
+                    f"{metric_max} max/total": max(max_values),
+                    f"{metric_max} min/total": min(max_values),
+                }
+            )
 
         wandb.log(final_wandb)
         wandb.save(local_log_filepath)

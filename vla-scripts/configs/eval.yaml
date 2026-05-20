@@ -18,26 +18,26 @@ load_in_8bit: false
 load_in_4bit: false
 
 # Environment (overridden by eval_env configs)
-env_name: "blockpush"
-num_images_in_input: 2
-num_open_loop_steps: 8
+env_name: ${eval_env.env_name}
+num_images_in_input: ${eval_env.num_images_in_input}
+num_open_loop_steps: ${eval_env.num_open_loop_steps}
 num_trials: 50
 max_steps: 300
-num_steps_wait: 0
+num_steps_wait: ${eval_env.num_steps_wait}
 cube_env_type: "double"  # Only used for cube env: single, double, triple, quadruple
 cube_task_id: 5           # Only used for cube env: task5_stack
 
 # Action (overridden by eval_env configs)
-action_dim: 2
-num_actions_chunk: 5
-proprio_dim: 0
-normalization_type: "bounds_q99"
+action_dim: ${eval_env.action_dim}
+num_actions_chunk: ${eval_env.num_actions_chunk}
+proprio_dim: ${eval_env.proprio_dim}
+normalization_type: ${eval_env.normalization_type}
 unnorm_key: ""
 
 # Logging
 run_id_note: null
 local_log_dir: "./experiments/logs"
-use_wandb: false
+use_wandb: true
 wandb_entity: ${env_vars.wandb_entity}
 wandb_project: ${env_vars.wandb_project}
 seed: 7

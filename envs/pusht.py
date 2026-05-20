@@ -116,9 +116,7 @@ class PymunkKeypointManager:
 
             tf_img_obj = cls.get_tf_img_obj(obj)
             xy_img = np.moveaxis(np.array(np.indices((512, 512))), 0, -1)[:, :, ::-1]
-            local_coord_img = tf_img_obj.inverse(xy_img.reshape(-1, 2)).reshape(
-                xy_img.shape
-            )
+            local_coord_img = tf_img_obj.inverse(xy_img.reshape(-1, 2)).reshape(xy_img.shape)
             obj_local_coords = local_coord_img[obj_mask]
 
             # furthest point sampling
@@ -143,9 +141,7 @@ class PymunkKeypointManager:
         pose = tuple(obj.position) + (obj.angle,)
         return cls.get_tf_img(pose)
 
-    def get_keypoints_global(
-        self, pose_map: Dict[set, Union[Sequence, pymunk.Body]], is_obj=False
-    ):
+    def get_keypoints_global(self, pose_map: Dict[set, Union[Sequence, pymunk.Body]], is_obj=False):
         kp_map = dict()
         for key, value in pose_map.items():
             if is_obj:
@@ -232,9 +228,7 @@ class DrawOptions(pymunk.SpaceDebugDrawOptions):
         p = to_pygame(pos, self.surface)
 
         pygame.draw.circle(self.surface, fill_color.as_int(), p, round(radius), 0)
-        pygame.draw.circle(
-            self.surface, light_color(fill_color).as_int(), p, round(radius - 4), 0
-        )
+        pygame.draw.circle(self.surface, light_color(fill_color).as_int(), p, round(radius - 4), 0)
 
         circle_edge = pos + Vec2d(radius, 0).rotated(angle)
         p2 = to_pygame(circle_edge, self.surface)
@@ -306,9 +300,7 @@ class DrawOptions(pymunk.SpaceDebugDrawOptions):
                 b = verts[(i + 1) % len(verts)]
                 self.draw_fat_segment(a, b, radius, fill_color, fill_color)
 
-    def draw_dot(
-        self, size: float, pos: Tuple[float, float], color: SpaceDebugColor
-    ) -> None:
+    def draw_dot(self, size: float, pos: Tuple[float, float], color: SpaceDebugColor) -> None:
         p = to_pygame(pos, self.surface)
         pygame.draw.circle(self.surface, color.as_int(), p, round(size), 0)
 
@@ -340,9 +332,7 @@ def from_pygame(p: Tuple[float, float], surface: pygame.Surface) -> Tuple[int, i
 
 
 def light_color(color: SpaceDebugColor):
-    color = np.minimum(
-        1.2 * np.float32([color.r, color.g, color.b, color.a]), np.float32([255])
-    )
+    color = np.minimum(1.2 * np.float32([color.r, color.g, color.b, color.a]), np.float32([255]))
     color = SpaceDebugColor(r=color[0], g=color[1], b=color[2], a=color[3])
     return color
 
@@ -450,6 +440,7 @@ class PushTEnv(gym.Env):
         return observation
 
     def step(self, action):
+        action = action * 500
         dt = 1.0 / self.sim_hz
         self.n_contact_points = 0
         n_steps = self.sim_hz // self.control_hz
@@ -458,9 +449,7 @@ class PushTEnv(gym.Env):
             for i in range(n_steps):
                 # Step PD control.
                 # self.agent.velocity = self.k_p * (act - self.agent.position)    # P control works too.
-                acceleration = self.k_p * (action - self.agent.position) + self.k_v * (
-                    Vec2d(0, 0) - self.agent.velocity
-                )
+                acceleration = self.k_p * (action - self.agent.position) + self.k_v * (Vec2d(0, 0) - self.agent.velocity)
                 self.agent.velocity += acceleration * dt
 
                 # Step physics.
@@ -491,9 +480,7 @@ class PushTEnv(gym.Env):
 
         def act(obs):
             act = None
-            mouse_position = pymunk.pygame_util.from_pygame(
-                Vec2d(*pygame.mouse.get_pos()), self.screen
-            )
+            mouse_position = pymunk.pygame_util.from_pygame(Vec2d(*pygame.mouse.get_pos()), self.screen)
             if self.teleop or (mouse_position - self.agent.position).length < 30:
                 self.teleop = True
                 act = mouse_position
@@ -502,11 +489,7 @@ class PushTEnv(gym.Env):
         return TeleopAgent(act)
 
     def _get_obs(self):
-        obs = np.array(
-            tuple(self.agent.position)
-            + tuple(self.block.position)
-            + (self.block.angle % (2 * np.pi),)
-        )
+        obs = np.array(tuple(self.agent.position) + tuple(self.block.position) + (self.block.angle % (2 * np.pi),))
         return obs
 
     def _get_goal_pose_body(self, pose):
@@ -549,9 +532,7 @@ class PushTEnv(gym.Env):
         goal_body = self._get_goal_pose_body(self.goal_pose)
         for shape in self.block.shapes:
             goal_points = [
-                pymunk.pygame_util.to_pygame(
-                    goal_body.local_to_world(v), draw_options.surface
-                )
+                pymunk.pygame_util.to_pygame(goal_body.local_to_world(v), draw_options.surface)
                 for v in shape.get_vertices()
             ]
             goal_points += [goal_points[0]]
@@ -621,26 +602,18 @@ class PushTEnv(gym.Env):
 
         # Run physics to take effect
         self.space.step(1.0 / self.sim_hz)
-    
+
     def set_init_state(self, state):
         self._set_state(state)
 
     def _set_state_local(self, state_local):
         agent_pos_local = state_local[:2]
         block_pose_local = state_local[2:]
-        tf_img_obj = st.AffineTransform(
-            translation=self.goal_pose[:2], rotation=self.goal_pose[2]
-        )
-        tf_obj_new = st.AffineTransform(
-            translation=block_pose_local[:2], rotation=block_pose_local[2]
-        )
+        tf_img_obj = st.AffineTransform(translation=self.goal_pose[:2], rotation=self.goal_pose[2])
+        tf_obj_new = st.AffineTransform(translation=block_pose_local[:2], rotation=block_pose_local[2])
         tf_img_new = st.AffineTransform(matrix=tf_img_obj.params @ tf_obj_new.params)
         agent_pos_new = tf_img_new(agent_pos_local)
-        new_state = np.array(
-            list(agent_pos_new[0])
-            + list(tf_img_new.translation)
-            + [tf_img_new.rotation]
-        )
+        new_state = np.array(list(agent_pos_new[0]) + list(tf_img_new.translation) + [tf_img_new.rotation])
         self._set_state(new_state)
         return new_state
 
@@ -679,9 +652,7 @@ class PushTEnv(gym.Env):
 
     def _add_segment(self, a, b, radius):
         shape = pymunk.Segment(self.space.static_body, a, b, radius)
-        shape.color = pygame.Color(
-            "LightGray"
-        )  # https://htmlcolorcodes.com/color-names
+        shape.color = pygame.Color("LightGray")  # https://htmlcolorcodes.com/color-names
         return shape
 
     def add_circle(self, position, radius):
@@ -734,9 +705,7 @@ class PushTEnv(gym.Env):
         shape2.color = pygame.Color(color)
         shape1.filter = pymunk.ShapeFilter(mask=mask)
         shape2.filter = pymunk.ShapeFilter(mask=mask)
-        body.center_of_gravity = (
-            shape1.center_of_gravity + shape2.center_of_gravity
-        ) / 2
+        body.center_of_gravity = (shape1.center_of_gravity + shape2.center_of_gravity) / 2
         body.position = position
         body.angle = angle
         body.friction = 1
@@ -794,9 +763,7 @@ class PymunkKeypointManager:
 
             tf_img_obj = cls.get_tf_img_obj(obj)
             xy_img = np.moveaxis(np.array(np.indices((512, 512))), 0, -1)[:, :, ::-1]
-            local_coord_img = tf_img_obj.inverse(xy_img.reshape(-1, 2)).reshape(
-                xy_img.shape
-            )
+            local_coord_img = tf_img_obj.inverse(xy_img.reshape(-1, 2)).reshape(xy_img.shape)
             obj_local_coords = local_coord_img[obj_mask]
 
             # furthest point sampling
@@ -821,9 +788,7 @@ class PymunkKeypointManager:
         pose = tuple(obj.position) + (obj.angle,)
         return cls.get_tf_img(pose)
 
-    def get_keypoints_global(
-        self, pose_map: Dict[set, Union[Sequence, pymunk.Body]], is_obj=False
-    ):
+    def get_keypoints_global(self, pose_map: Dict[set, Union[Sequence, pymunk.Body]], is_obj=False):
         kp_map = dict()
         for key, value in pose_map.items():
             if is_obj:
@@ -901,16 +866,12 @@ class PushTKeypointsEnv(PushTEnv):
         high[Do:] = 1.0
 
         # (block_kps+agent_kps, xy+confidence)
-        self.observation_space = spaces.Box(
-            low=low, high=high, shape=low.shape, dtype=np.float64
-        )
+        self.observation_space = spaces.Box(low=low, high=high, shape=low.shape, dtype=np.float64)
 
         self.keypoint_visible_rate = keypoint_visible_rate
         self.agent_keypoints = agent_keypoints
         self.draw_keypoints = draw_keypoints
-        self.kp_manager = PymunkKeypointManager(
-            local_keypoint_map=local_keypoint_map, color_map=color_map
-        )
+        self.kp_manager = PymunkKeypointManager(local_keypoint_map=local_keypoint_map, color_map=color_map)
         self.draw_kp_map = None
 
     @classmethod
@@ -959,9 +920,7 @@ class PushTKeypointsEnv(PushTEnv):
     def _render_frame(self, mode):
         img = super()._render_frame(mode)
         if self.draw_keypoints:
-            self.kp_manager.draw_keypoints(
-                img, self.draw_kp_map, radius=int(img.shape[0] / 96)
-            )
+            self.kp_manager.draw_keypoints(img, self.draw_kp_map, radius=int(img.shape[0] / 96))
         return img
 
 
@@ -1004,21 +963,9 @@ class Normalizer:
         for end in meta["episode_ends"]:
             if (300 - (end - start)) <= 0:
                 print("too small capacity")
-            observations.append(
-                np.concatenate(
-                    (keypoint_obs[start:end], np.zeros((300 - (end - start), 20)))
-                )
-            )
-            actions.append(
-                np.concatenate(
-                    (data["action"][start:end], np.zeros((300 - (end - start), 2)))
-                )
-            )
-            masks.append(
-                np.concatenate(
-                    (np.ones((end - start)), np.zeros((300 - (end - start))))
-                )
-            )
+            observations.append(np.concatenate((keypoint_obs[start:end], np.zeros((300 - (end - start), 20)))))
+            actions.append(np.concatenate((data["action"][start:end], np.zeros((300 - (end - start), 2)))))
+            masks.append(np.concatenate((np.ones((end - start)), np.zeros((300 - (end - start))))))
 
             start = end
         observations = np.array(observations)
@@ -1077,6 +1024,7 @@ class PushWrapper(gym.Wrapper):
     def seed(self, seed=None):
         return self.env.seed(seed=seed)
 
+
 class PushTStateWrapper(gym.Wrapper):
     def __init__(self, env, id):
         super().__init__(env)
@@ -1084,37 +1032,37 @@ class PushTStateWrapper(gym.Wrapper):
         self.id = id
         self.max_steps = 300
         self.step_idx = 0
-        self.coverage_arr = env.coverage_arr # Reference to env's coverage array
+        self.coverage_arr = env.coverage_arr  # Reference to env's coverage array
 
     def reset(self, goal_idx=None):
-        obs = self.env.reset() # (5,)
+        obs = self.env.reset()  # (5,)
         self.step_idx = 0
         # Normalize state
         # agent_pos (2), block_pos (2), block_angle (1)
         obs[:4] /= 512.0
-        obs[4] /= (2 * np.pi)
+        obs[4] /= 2 * np.pi
         return obs
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
-        
+
         # Normalize obs
         obs[:4] /= 512.0
-        obs[4] /= (2 * np.pi)
+        obs[4] /= 2 * np.pi
 
         self.step_idx += 1
         if self.step_idx >= self.max_steps:
             done = True
-        
+
         if len(self.env.coverage_arr) > 0:
             info["max_coverage"] = max(self.env.coverage_arr)
             info["final_coverage"] = self.env.coverage_arr[-1]
         else:
             info["max_coverage"] = 0
             info["final_coverage"] = 0
-            
-        info["all_completions_ids"] = [] # Placeholder
-        
+
+        info["all_completions_ids"] = []  # Placeholder
+
         # online_eval expects info["image"] for recording.
         # We can optionally render if needed, but for speed maybe we shouldn't unless requested.
         # But VideoRecorder uses it.
@@ -1122,7 +1070,7 @@ class PushTStateWrapper(gym.Wrapper):
         # online_eval.py:
         # if videorecorder.enabled:
         #    videorecorder.record(info["image"])
-        
+
         # We should probably populate info["image"] just in case, or make it optional.
         # PushWrapper renders it.
         info["image"] = self.env.render(mode="rgb_array")

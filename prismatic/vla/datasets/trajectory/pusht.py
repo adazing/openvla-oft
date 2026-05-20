@@ -1,4 +1,5 @@
 """PushT trajectory dataset. Adapted from patch_policy."""
+
 import torch
 import einops
 import pickle
@@ -46,6 +47,9 @@ class PushTDataset(TrajectoryDataset):
                 vid_dir = self.data_directory / "obses"
                 obs = torch.load(str(vid_dir / f"episode_{i:03d}.pth"))
                 self.obses.append(obs)
+
+        self.actions = self.actions / 500.0
+        print(self.actions)
 
     def get_seq_length(self, idx):
         return self.seq_lengths[idx]
