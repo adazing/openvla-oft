@@ -50,6 +50,7 @@ TASK_DESCRIPTIONS = {
     "blockpush": "push each block to its target location",
     "cube": "stack the cubes to match their target locations",
     "pusht": "push the T-shaped block to the target",
+    "franka_insertion": "insert the object into the target",
 }
 
 
@@ -73,8 +74,8 @@ def validate_config(cfg: DictConfig) -> None:
 
     assert not (cfg.load_in_8bit and cfg.load_in_4bit), "Cannot use both 8-bit and 4-bit quantization!"
 
-    assert cfg.env_name in ["blockpush", "cube", "libero_goal", "pusht"], (
-        f"Invalid env_name: {cfg.env_name}. Must be one of: blockpush, cube, libero_goal, pusht"
+    assert cfg.env_name in ["blockpush", "cube", "libero_goal", "pusht", "franka_insertion"], (
+        f"Invalid env_name: {cfg.env_name}. Must be one of: blockpush, cube, libero_goal, pusht, franka_insertion"
     )
 
 
@@ -230,6 +231,13 @@ def create_env(cfg: DictConfig):
         from envs.libero.libero_env import LiberoEnv
 
         env = LiberoEnv(task_suite_name="libero_goal")
+        return env
+
+    elif cfg.env_name == "franka_insertion":
+        # Dummy stand-in; real eval happens off-script on the actual Franka.
+        from envs.env_utils import RealRobotDummyEnv
+
+        env = RealRobotDummyEnv(act_dim=cfg.action_dim, views=cfg.num_images_in_input, id="franka_insertion")
         return env
 
     else:
