@@ -5,9 +5,10 @@ datasets:
   cube: ${env_vars.dataset_root}/cube
   libero: ${env_vars.dataset_root}/libero_dataset
   pusht: ${env_vars.dataset_root}/pusht_dataset
-  franka_insertion: /nas/bowen/data/patch_policy/insertion_1
-  franka_spatula: /nas/bowen/data/patch_policy/spatula
-  franka_pen: /nas/bowen/data/patch_policy/pen
+  franka_insertion: /checkpoint/jepa_core/gzhou/datasets/pp_real_dset/insertion_1
+  # franka_insertion: /checkpoint/jepa_core/gzhou/datasets/pp_real_dset/insertion_1_static_filtered_small
+  franka_spatula: /checkpoint/jepa_core/gzhou/datasets/pp_real_dset/spatula
+  franka_pen: /checkpoint/jepa_core/gzhou/datasets/pp_real_dset/pen
 
 wandb_entity: gaoyuezhou
 wandb_project: "openvla-oft"

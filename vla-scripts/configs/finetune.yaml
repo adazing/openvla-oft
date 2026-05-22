@@ -16,11 +16,11 @@ use_proprio: false
 batch_size: 8
 learning_rate: 5e-4
 lr_warmup_steps: 0
-num_steps_before_decay: 100000
+num_steps_before_decay: 10000
 grad_accumulation_steps: 1
-max_steps: 200000
+max_steps: 20000
 image_aug: true
-save_freq: 10000
+save_freq: 1000
 save_latest_checkpoint_only: false
 resume: false
 resume_step: null
@@ -36,7 +36,7 @@ lora_dropout: 0.0
 merge_lora_during_training: true
 
 # Logging
-run_root_dir: "/checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs"
+run_root_dir: "/checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs_joint_absolute_framestep6"
 wandb_entity: ${env_vars.wandb_entity}
 wandb_project: ${env_vars.wandb_project}
 wandb_log_freq: 10
@@ -47,4 +47,4 @@ hydra:
   job:
     chdir: false
   run:
-    dir: /checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /checkpoint/jepa_core/gzhou/exps/openvla_oft/outputs_joint_absolute_framestep6/${now:%Y-%m-%d}/${now:%H-%M-%S}

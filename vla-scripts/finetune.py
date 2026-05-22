@@ -1009,6 +1009,7 @@ def finetune(cfg: DictConfig) -> None:
             traj_dataset,
             train_fraction=cfg.dataset.train_fraction,
             window_size=cfg.dataset.window_size,
+            frame_step=6,
         )
 
         # Wrap in VLA adapter

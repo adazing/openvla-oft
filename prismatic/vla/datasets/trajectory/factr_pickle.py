@@ -81,7 +81,8 @@ class FactrPickleDataset(TrajectoryDataset):
         ),
         image_shape: Tuple[int, int] = (224, 224),
         # Action target
-        action_type: str = "eef_delta",
+        # action_type: str = "eef_delta",
+        action_type: str = "joint_absolute",
         joint_cmd_topic: str = "/factr_teleop/left/cmd_franka_pos",
         eef_pose_topic: str = "/franka/left/obs_franka_eef_pose",
         rot_unit: str = "axis",
@@ -139,22 +140,20 @@ class FactrPickleDataset(TrajectoryDataset):
 
         pkl_paths = sorted(self.dataset_root.glob(episode_glob))
         if not pkl_paths:
-            raise FileNotFoundError(
-                f"No episodes matching {episode_glob!r} under {self.dataset_root}"
-            )
+            raise FileNotFoundError(f"No episodes matching {episode_glob!r} under {self.dataset_root}")
         if subset_fraction is not None:
             assert 0 < subset_fraction <= 1
             n = max(1, int(round(len(pkl_paths) * subset_fraction)))
             pkl_paths = pkl_paths[:n]
 
         # Per-episode buffers, indexed by trajectory id (0..N-1)
-        self._actions: List[np.ndarray] = []        # (T, action_dim) — training target
-        self._eef_pose: List[np.ndarray] = []       # (T, 7) absolute [xyz + xyzw quat] — goals
-        self._gripper: List[Optional[np.ndarray]] = []   # (T,) float32 in [0, 1], or None
-        self._states: List[Optional[np.ndarray]] = []    # (T, state_dim) or None
+        self._actions: List[np.ndarray] = []  # (T, action_dim) — training target
+        self._eef_pose: List[np.ndarray] = []  # (T, 7) absolute [xyz + xyzw quat] — goals
+        self._gripper: List[Optional[np.ndarray]] = []  # (T,) float32 in [0, 1], or None
+        self._states: List[Optional[np.ndarray]] = []  # (T, state_dim) or None
         # Each entry of _jpegs is a list of length V; each view is a length-T list of JPEG buffers.
         self._jpegs: List[List[List[np.ndarray]]] = []
-        self._decoded: List[Optional[np.ndarray]] = []   # (T, V, H, W, 3) uint8 if prefetch
+        self._decoded: List[Optional[np.ndarray]] = []  # (T, V, H, W, 3) uint8 if prefetch
         self._lengths: List[int] = []
 
         del seed  # reserved for future jitter
@@ -163,10 +162,13 @@ class FactrPickleDataset(TrajectoryDataset):
 
         self.action_dim = self._actions[0].shape[1] if self._actions else 0
         logger.info(
-            "FactrPickleDataset: %d episodes, V=%d, action_dim=%d, action_type=%s, "
-            "gripper_mode=%s, goal_source=%s",
-            len(self._lengths), len(self.image_topics), self.action_dim,
-            self.action_type, self.gripper_mode, self.goal_source,
+            "FactrPickleDataset: %d episodes, V=%d, action_dim=%d, action_type=%s, gripper_mode=%s, goal_source=%s",
+            len(self._lengths),
+            len(self.image_topics),
+            self.action_dim,
+            self.action_type,
+            self.gripper_mode,
+            self.goal_source,
         )
 
     # ------------------------------------------------------------------ loading
@@ -224,7 +226,7 @@ class FactrPickleDataset(TrajectoryDataset):
             else:
                 arm = joints
         elif self.action_type == "eef_absolute":
-            arm = _eef_pose_to_xyz_rot(eef_pose, self.rot_unit)        # (T, 6)
+            arm = _eef_pose_to_xyz_rot(eef_pose, self.rot_unit)  # (T, 6)
         else:  # eef_delta
             arm = _eef_pose_to_step_delta(eef_pose, self.rot_unit, self.frame)  # (T, 6)
 
@@ -258,10 +260,7 @@ class FactrPickleDataset(TrajectoryDataset):
         decoded: Optional[np.ndarray] = None
         if self.prefetch_images:
             decoded = np.stack(
-                [
-                    np.stack([self._decode_jpeg(v[t]) for v in per_view_jpegs], axis=0)
-                    for t in range(T)
-                ],
+                [np.stack([self._decode_jpeg(v[t]) for v in per_view_jpegs], axis=0) for t in range(T)],
                 axis=0,
             )  # (T, V, H, W, 3) uint8
 
@@ -280,8 +279,7 @@ class FactrPickleDataset(TrajectoryDataset):
             cg_ts = np.asarray(ts[self.gripper_cmd_topic], dtype=np.int64)
             cg_idx = _nearest_indices(img_ts, cg_ts)
             cg = np.stack(
-                [np.asarray(data[self.gripper_cmd_topic][i], dtype=np.float32).reshape(-1)[0]
-                 for i in cg_idx],
+                [np.asarray(data[self.gripper_cmd_topic][i], dtype=np.float32).reshape(-1)[0] for i in cg_idx],
                 axis=0,
             )
             return _hysteresis(cg, self.gripper_open_below, self.gripper_close_above)
@@ -289,8 +287,7 @@ class FactrPickleDataset(TrajectoryDataset):
         gw_ts = np.asarray(ts[self.gripper_width_topic], dtype=np.int64)
         gw_idx = _nearest_indices(img_ts, gw_ts)
         gw = np.stack(
-            [np.asarray(data[self.gripper_width_topic][i], dtype=np.float32).reshape(-1)[0]
-             for i in gw_idx],
+            [np.asarray(data[self.gripper_width_topic][i], dtype=np.float32).reshape(-1)[0] for i in gw_idx],
             axis=0,
         )
         # Franka Hand max width ≈ 0.08 m; scale to ~[0, 1].
@@ -329,10 +326,7 @@ class FactrPickleDataset(TrajectoryDataset):
 
         T = self._lengths[idx]
         if frames.min() < 0 or frames.max() >= T:
-            raise IndexError(
-                f"frame indices out of range for ep {idx} (T={T}): "
-                f"[{frames.min()}, {frames.max()}]"
-            )
+            raise IndexError(f"frame indices out of range for ep {idx} (T={T}): [{frames.min()}, {frames.max()}]")
 
         decoded = self._decoded[idx]
         if decoded is not None:
@@ -340,14 +334,11 @@ class FactrPickleDataset(TrajectoryDataset):
         else:
             views = self._jpegs[idx]
             imgs_np = np.stack(
-                [
-                    np.stack([self._decode_jpeg(v[t]) for v in views], axis=0)
-                    for t in frames
-                ],
+                [np.stack([self._decode_jpeg(v[t]) for v in views], axis=0) for t in frames],
                 axis=0,
             )  # (k, V, H, W, 3) uint8
 
-        obs = torch.from_numpy(imgs_np).float() / 255.0          # (k, V, H, W, 3)
+        obs = torch.from_numpy(imgs_np).float() / 255.0  # (k, V, H, W, 3)
         obs = einops.rearrange(obs, "T V H W C -> T V C H W")
 
         actions = torch.from_numpy(self._actions[idx][frames]).float()  # (k, A)
@@ -441,7 +432,7 @@ def _eef_pose_to_step_delta(pose: np.ndarray, rot_unit: str, frame: str) -> np.n
         return out
     rots = R.from_quat(pose[:, _EEF_QUAT])
     xyz = pose[:, _EEF_XYZ]
-    dxyz_w = xyz[1:] - xyz[:-1]                                     # (T-1, 3)
+    dxyz_w = xyz[1:] - xyz[:-1]  # (T-1, 3)
     r_t = rots[:-1]
     r_tp1 = rots[1:]
     if frame == "world":
@@ -456,7 +447,7 @@ def _eef_pose_to_step_delta(pose: np.ndarray, rot_unit: str, frame: str) -> np.n
         drot = r_delta.as_euler("xyz", degrees=False)
     out[:-1, :3] = dxyz
     out[:-1, 3:] = drot
-    out[-1] = out[-2]                                               # repeat last delta
+    out[-1] = out[-2]  # repeat last delta
     return out
 
 
